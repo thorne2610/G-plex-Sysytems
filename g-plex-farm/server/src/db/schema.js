@@ -346,13 +346,40 @@ CREATE TABLE IF NOT EXISTS budget_lines (
    MODULE 5 — FARM INPUTS
 ───────────────────────────────────────────── */
 
+CREATE TABLE IF NOT EXISTS farms (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  code        TEXT NOT NULL UNIQUE,
+  name        TEXT NOT NULL,
+  location    TEXT,
+  area_ha     REAL NOT NULL DEFAULT 0,
+  gps_boundary TEXT,
+  status      TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','inactive')),
+  notes       TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS farm_blocks (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  farm_id     INTEGER NOT NULL REFERENCES farms(id),
+  code        TEXT NOT NULL,
+  name        TEXT NOT NULL,
+  area_ha     REAL NOT NULL DEFAULT 0,
+  notes       TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(farm_id, code)
+);
+
 CREATE TABLE IF NOT EXISTS fields (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  farm_id     INTEGER REFERENCES farms(id),
+  block_id    INTEGER REFERENCES farm_blocks(id),
   name        TEXT    NOT NULL,
   code        TEXT    NOT NULL UNIQUE,
   area_ha     REAL    NOT NULL DEFAULT 0,
   location    TEXT,
   soil_type   TEXT,
+  gps_boundary TEXT,
   gps_lat     REAL,
   gps_lng     REAL,
   is_active   INTEGER NOT NULL DEFAULT 1,
@@ -385,6 +412,7 @@ CREATE TABLE IF NOT EXISTS input_issues (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   ref_no        TEXT    NOT NULL UNIQUE,
   field_id      INTEGER NOT NULL REFERENCES fields(id),
+  field_cycle_id INTEGER REFERENCES field_cycles(id),
   season_id     INTEGER NOT NULL REFERENCES seasons(id),
   product_id    INTEGER NOT NULL REFERENCES products(id),
   warehouse_id  INTEGER NOT NULL REFERENCES warehouses(id),
@@ -429,6 +457,105 @@ CREATE TABLE IF NOT EXISTS plantings (
   notes           TEXT,
   created_by      INTEGER NOT NULL REFERENCES users(id),
   created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+/* A crop cycle is the complete, crop-agnostic production history for a field. */
+CREATE TABLE IF NOT EXISTS field_cycles (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  ref_no              TEXT NOT NULL UNIQUE,
+  field_id            INTEGER NOT NULL REFERENCES fields(id),
+  season_id           INTEGER REFERENCES seasons(id),
+  crop                TEXT NOT NULL,
+  variety             TEXT NOT NULL,
+  seed_source         TEXT,
+  seed_batch_no       TEXT,
+  land_prep_date      TEXT,
+  land_prep_machinery TEXT,
+  planting_date       TEXT NOT NULL,
+  spacing             TEXT,
+  seed_rate           REAL,
+  seed_rate_unit      TEXT,
+  expected_harvest_date TEXT,
+  expected_yield      REAL,
+  yield_unit          TEXT NOT NULL DEFAULT 'kg',
+  status              TEXT NOT NULL DEFAULT 'planned' CHECK(status IN ('planned','active','harvested','closed')),
+  notes               TEXT,
+  created_by          INTEGER NOT NULL REFERENCES users(id),
+  created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS field_activities (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  field_cycle_id  INTEGER NOT NULL REFERENCES field_cycles(id) ON DELETE CASCADE,
+  date            TEXT NOT NULL,
+  activity_type   TEXT NOT NULL CHECK(activity_type IN ('land_preparation','fertiliser','chemical','irrigation','rainfall','scouting','crop_health','weeding','planting','other')),
+  description     TEXT,
+  product_id      INTEGER REFERENCES products(id),
+  warehouse_id    INTEGER REFERENCES warehouses(id),
+  stock_movement_id INTEGER REFERENCES stock_movements(id),
+  input_batch_no  TEXT,
+  application_rate REAL,
+  application_rate_unit TEXT,
+  target_pest     TEXT,
+  recommendation_ref TEXT,
+  authorised_by_name TEXT,
+  authorised_by_qualification TEXT,
+  applied_by      INTEGER REFERENCES users(id),
+  quantity        REAL NOT NULL DEFAULT 0,
+  quantity_unit  TEXT,
+  rainfall_mm    REAL,
+  observation    TEXT,
+  severity       TEXT,
+  action_taken   TEXT,
+  workers        INTEGER NOT NULL DEFAULT 0,
+  labour_hours   REAL NOT NULL DEFAULT 0,
+  labour_cost    REAL NOT NULL DEFAULT 0,
+  machinery_name TEXT,
+  asset_id       INTEGER REFERENCES assets(id),
+  machinery_hours REAL NOT NULL DEFAULT 0,
+  machinery_cost REAL NOT NULL DEFAULT 0,
+  input_cost     REAL NOT NULL DEFAULT 0,
+  other_cost     REAL NOT NULL DEFAULT 0,
+  total_cost     REAL NOT NULL DEFAULT 0,
+  notes          TEXT,
+  created_by     INTEGER NOT NULL REFERENCES users(id),
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS field_harvests (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  ref_no          TEXT NOT NULL UNIQUE,
+  field_cycle_id  INTEGER NOT NULL REFERENCES field_cycles(id),
+  harvest_date    TEXT NOT NULL,
+  gross_qty       REAL NOT NULL DEFAULT 0,
+  grade_a_qty     REAL NOT NULL DEFAULT 0,
+  grade_b_qty     REAL NOT NULL DEFAULT 0,
+  grade_c_qty     REAL NOT NULL DEFAULT 0,
+  reject_qty      REAL NOT NULL DEFAULT 0,
+  loss_qty        REAL NOT NULL DEFAULT 0,
+  unit            TEXT NOT NULL DEFAULT 'kg',
+  storage_location TEXT,
+  warehouse_id    INTEGER REFERENCES warehouses(id),
+  notes           TEXT,
+  created_by      INTEGER NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS field_harvest_sales (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  harvest_id      INTEGER NOT NULL REFERENCES field_harvests(id) ON DELETE CASCADE,
+  sale_date       TEXT NOT NULL,
+  customer_name   TEXT,
+  qty             REAL NOT NULL DEFAULT 0,
+  unit            TEXT NOT NULL DEFAULT 'kg',
+  unit_price      REAL NOT NULL DEFAULT 0,
+  total_amount    REAL NOT NULL DEFAULT 0,
+  invoice_id      INTEGER REFERENCES invoices(id),
+  sale_ref        TEXT,
+  notes           TEXT,
+  created_by      INTEGER NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS crop_activities (
@@ -683,4 +810,11 @@ CREATE INDEX IF NOT EXISTS idx_journal_lines_account ON journal_lines(account_id
 CREATE INDEX IF NOT EXISTS idx_journal_entries_date ON journal_entries(date);
 CREATE INDEX IF NOT EXISTS idx_growers_code ON growers(code);
 CREATE INDEX IF NOT EXISTS idx_seed_lots_lot ON seed_lots(lot_number);
+CREATE INDEX IF NOT EXISTS idx_farm_blocks_farm ON farm_blocks(farm_id, code);
+CREATE INDEX IF NOT EXISTS idx_field_cycles_field_season ON field_cycles(field_id, season_id, planting_date);
+CREATE INDEX IF NOT EXISTS idx_field_cycles_crop_variety ON field_cycles(crop, variety);
+CREATE INDEX IF NOT EXISTS idx_field_activities_cycle_date ON field_activities(field_cycle_id, date);
+CREATE INDEX IF NOT EXISTS idx_field_harvests_cycle_date ON field_harvests(field_cycle_id, harvest_date);
+CREATE INDEX IF NOT EXISTS idx_field_harvest_sales_harvest_date ON field_harvest_sales(harvest_id, sale_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_field_activities_stock_movement ON field_activities(stock_movement_id) WHERE stock_movement_id IS NOT NULL;
 `;

@@ -13,6 +13,30 @@ export function runMigrations() {
   // Run all schema SQL
   db.exec(SCHEMA_SQL);
 
+  // Additive upgrades for installations created before farm hierarchy fields were introduced.
+  const fieldColumns = new Set(db.prepare("PRAGMA table_info('fields')").all().map(column => column.name));
+  if (!fieldColumns.has('farm_id')) db.exec('ALTER TABLE fields ADD COLUMN farm_id INTEGER REFERENCES farms(id)');
+  if (!fieldColumns.has('block_id')) db.exec('ALTER TABLE fields ADD COLUMN block_id INTEGER REFERENCES farm_blocks(id)');
+  if (!fieldColumns.has('gps_boundary')) db.exec('ALTER TABLE fields ADD COLUMN gps_boundary TEXT');
+  const issueColumns = new Set(db.prepare("PRAGMA table_info('input_issues')").all().map(column => column.name));
+  if (!issueColumns.has('field_cycle_id')) db.exec('ALTER TABLE input_issues ADD COLUMN field_cycle_id INTEGER REFERENCES field_cycles(id)');
+  const activityColumns = new Set(db.prepare("PRAGMA table_info('field_activities')").all().map(column => column.name));
+  const activityUpgrades = [
+    ['warehouse_id', 'INTEGER REFERENCES warehouses(id)'],
+    ['stock_movement_id', 'INTEGER REFERENCES stock_movements(id)'],
+    ['application_rate', 'REAL'],
+    ['application_rate_unit', 'TEXT'],
+    ['target_pest', 'TEXT'],
+    ['recommendation_ref', 'TEXT'],
+    ['authorised_by_name', 'TEXT'],
+    ['authorised_by_qualification', 'TEXT'],
+    ['applied_by', 'INTEGER REFERENCES users(id)'],
+  ];
+  for (const [column, definition] of activityUpgrades) {
+    if (!activityColumns.has(column)) db.exec(`ALTER TABLE field_activities ADD COLUMN ${column} ${definition}`);
+  }
+  db.exec('CREATE INDEX IF NOT EXISTS idx_fields_farm_block ON fields(farm_id, block_id, code)');
+
   console.log('✅ Database schema applied');
 }
 
@@ -27,6 +51,13 @@ export async function seedDatabase() {
       VALUES (1, 'G-Plex Farm', 'KES', 'DD/MM/YYYY', '01/01')
     `).run();
     console.log('✅ Default settings inserted');
+  }
+
+  // Give legacy installations a farm parent so their existing fields remain visible.
+  let defaultFarm = db.prepare('SELECT id FROM farms ORDER BY id LIMIT 1').get();
+  if (!defaultFarm) {
+    const created = db.prepare("INSERT INTO farms (code,name,location,notes) VALUES ('FARM-001','G-Plex Main Farm','Kenya','Default farm created during upgrade; update this record with the actual farm boundary and acreage.')").run();
+    defaultFarm = { id: created.lastInsertRowid };
   }
 
     // ── Default Admin User ────────────────────────────────────────
@@ -146,6 +177,9 @@ export async function seedDatabase() {
     insertField.run('KIRINYAGA-C2', 'Kirinyaga Plot C2', 10.5, 'Kirinyaga Zone', 'Red Loam', '26 acres under Maize seed H614. Growing well.');
     console.log('✅ Default fields seeded (Muthaiga, Kilimo, Kirinyaga)');
   }
+
+  db.prepare('UPDATE fields SET farm_id=? WHERE farm_id IS NULL').run(defaultFarm.id);
+  db.prepare('UPDATE farms SET area_ha=COALESCE((SELECT SUM(area_ha) FROM fields WHERE farm_id=farms.id),area_ha) WHERE id=? AND area_ha=0').run(defaultFarm.id);
 
   // ── Default POS Products & Seed Lots ─────────────────────────
   const prodCount = db.prepare('SELECT COUNT(*) as c FROM products WHERE sku IN (?,?,?,?)').get('GP-H614-25', 'GP-ROSE-10', 'NPK-1717-50', 'KNAP-16L');

@@ -1,36 +1,39 @@
 # G-Plex iFarm — implementation status
 
-This repository contains the current web prototype, not the full 21-section integrated-system scope. Checkboxes below describe implementation coverage in the current source.
+This is an in-progress web ERP prototype. The checks below describe what is currently present in source, not a claim that the full integrated system is production-ready.
 
-## Available in the prototype
-- [x] Responsive React web client and Fastify API with SQLite.
-- [x] Authentication, user management and role checks on protected API routes.
-- [x] Customer sales workflow: quotations, orders, invoices and receipts.
-- [x] Product catalogue, warehouses, stock movements, purchase orders and GRNs.
-- [x] Contract grower register, seed-quality lots and quality-status workflow.
-- [x] Farmer POS: buy-now counter sales and input credit issues linked to a grower/contract, with configured recovery plan.
-- [x] Fields register, asset register and report screens.
+## Implemented in the current source
 
-## Partial or not yet delivered from the detailed requirements
-- [ ] Multiple farm records and farm-to-field/warehouse/department ownership hierarchy.
-- [ ] Field activity logs for planting, scouting, irrigation, spraying, labour and costs.
-- [ ] Fertiliser/chemical application plans, label and safety records, expiry and approvals.
-- [ ] Harvest, grading, storage, seed-to-customer traceability, QR/barcodes and customer reservations.
-- [ ] Complete contract workflow: inspections, approved budgets, deliveries, deductions, settlement and closure.
-- [ ] Equipment work orders, operator logs, mechanisation billing, fuel control and maintenance scheduling.
-- [ ] HR records, attendance, timesheets, piece-rate approval, leave and payroll.
-- [ ] Purchase requisition/quotation approvals and supplier invoice/payment matching.
-- [ ] Budgets, general-ledger posting, farm/field/crop profitability and budget-versus-actual controls.
-- [ ] Dispatch, delivery notes, transport allocation and proof of delivery.
-- [ ] Configurable approval limits, MFA, notification integrations and offline field capture/sync.
-- [ ] Full audit history and role-aware report exports.
+- [x] Responsive desktop/tablet/mobile web client, Fastify API, SQLite persistence and protected routes.
+- [x] Customer sales workflow: quotations, sales orders, invoices, receipts and farmer POS for cash sales or input credit.
+- [x] Product catalogue, multiple warehouses, stock balances/movements, purchase orders and goods-received notes.
+- [x] Contract-farmer register, seed-quality lot records and basic quality sign-off.
+- [x] Farm → block → uniquely identified field hierarchy, including farm acreage/location and GeoJSON boundary storage.
+- [x] Crop-agnostic field cycles with crop/variety, season, seed source/batch, land-preparation details, planting date, spacing/rate, expected harvest and yield.
+- [x] Field activity log for fertiliser/chemical applications, irrigation, rainfall, scouting, crop health, labour, machinery hours and costs.
+- [x] Optional field input issue from a selected warehouse, with stock sufficiency check, inventory movement, input cost and batch reference.
+- [x] Chemical application capture requires an entered label/guidance reference, approved rate and named/qualified authoriser; the application does not calculate or prescribe rates.
+- [x] Field-cycle harvest, grading, reject/loss, store/location, harvest sales and variety/field/season comparisons for recorded marketable yield, cost per hectare and revenue.
+- [x] Existing asset register, fuel logs and service records; these are the base for the expanded machinery workflow.
 
-## Next implementation sequence
-1. Secure setup and repository hygiene; preserve database and secrets outside Git.
-2. Organization model: farms, stores, seasons, fields, departments and role assignments.
-3. Production and contract workflows: crop plans, field records, input issues, inspections, harvest and settlement.
-4. Inventory traceability and guarded approvals across POS, stores and dispatch.
-5. Machinery, labour, procurement and finance cost flows.
-6. Reporting, notifications, offline field capture, migration, backups and pilot rollout.
+## Still required for the integrated-system scope
 
-Production use requires review of Kenyan tax/accounting treatment, data-protection controls, seed certification rules, employment/payroll requirements and actual company approval policies.
+- [ ] Complete field-service workflows: map drawing/GPS capture, agronomist approval identity/permissions, planned versus actual inputs, batch/expiry controls for all stores, audited stock reservation, crop-cycle edits and offline capture/sync.
+- [ ] Harvest-to-warehouse posting, lot-level grading and storage movements, customer sales/invoice reconciliation, dispatch, delivery notes and proof of delivery.
+- [ ] Full contract farmer workflow: registration verification, contracts, field inspections, input-support approvals, soil testing, financing, deliveries, deductions, settlement and closure.
+- [ ] Machinery/fleet operations: assigned operators, hour-meter/odometer history, daily work sheets, field-service costing, fuel issue/consumption reconciliation, work orders, spare parts, breakdown downtime, insurance/licence/inspection alerts and mechanisation billing by farmer and acreage.
+- [ ] HR and payroll: employee/worker records, department and contract, attendance, approved timesheets, field/piece-rate work approvals, leave, payroll runs, allowances/deductions, safety training/incidents/PPE and performance reporting.
+- [ ] Fertiliser/chemical governance: approved catalogue, suppliers/prices, lot and expiry management, storage controls, agronomist-authorised plans, application-versus-plan exceptions, safety data and access to applicable Kenyan guidance.
+- [ ] Finance controls: budgets, approvals, expense capture, general-ledger posting, bank/payment reconciliation, farm/field/crop profitability and budget-versus-actual reports.
+- [ ] Procurement requisition and approval limits, supplier quote comparison, invoice/payment matching and audit-ready approvals.
+- [ ] Audit history for all sensitive actions, granular roles/permissions, MFA, notifications, exports, backups/restore procedures and production monitoring.
+
+## Delivery sequence
+
+1. Organization hierarchy and access model: farms, blocks, stores, departments, staff and role assignments.
+2. Crop and contract operations: field plans, approved inputs, inspections, attendance/time capture, harvest and farmer settlement.
+3. Stock and machinery traceability: lot/expiry balances, authorised issue/returns, maintenance/spares and field work sheets.
+4. Finance, procurement, dispatch and approval flows with auditable accounting links.
+5. Offline field capture/sync, management analytics, security review, migration rehearsal, backup/restore rehearsal and a controlled pilot.
+
+Before operational use, G-Plex should confirm the company’s approval policy, Kenyan tax/accounting and payroll treatment, data-protection controls, seed certification obligations, chemical safety process and farm boundary data. The current prototype uses SQLite for local/LAN demonstration; hosting, concurrency and recovery requirements must be assessed before a multi-site production rollout.
