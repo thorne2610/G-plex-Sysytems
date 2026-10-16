@@ -31,12 +31,16 @@ For local development with Vite hot reload, use npm run dev; the API runs on por
 - Graded harvest, rejects/losses, storage location and harvest-sale records, with field/season/variety yield and cost comparisons.
 - Chemical use records require a manually entered product-label/guidance reference, approved rate and named/qualified authoriser; the application does not calculate or prescribe pesticide rates.
 - Existing machinery/assets register, fuel logs and service records.
+- Staff register for permanent, seasonal and casual workers, operators, agronomists and service providers; attendance clock records, farm/field work sheets, headcount, hours, acreage, piece-rate calculations and manager approvals.
+- Leave requests and safety training, incident and PPE records, with employee linking and expiry/follow-up fields.
+- Payroll draft runs with employee earnings, allowances, deductions and approval/payment status. Drafts use monthly base pay, approved attendance for daily/hourly pay and approved piece-rate work. Statutory calculations and general-ledger posting are not implemented.
+- Machinery assignments, hour-meter and odometer baselines, insurance/inspection/licence dates, maintenance parts and downtime, and machinery work sheets linked to assets, operators, farms, fields and contracted growers. Per-acre service amounts are calculated from acreage and rate, then progressed through planned, active, completed and billed states.
 
 The POS and other browser screens use the app's local API and SQLite database. Seed/fertiliser issued to a farmer is recorded as credit because these inputs are consumed; physical-return leasing is not used for them. Configure real prices, tax, credit limits, approval rights, stock policy and payment reconciliation before operational use.
 
 ## Planned against the full G-Plex requirements
 
-Further delivery is still needed for field boundary drawing and offline sync, batch quarantine/recall controls and expiry alerts, harvest-to-store posting and invoice reconciliation, full contract inspection and farmer settlement, equipment work sheets and mechanisation billing, HR/attendance/timesheets/piece-rate/payroll/safety, budgets and general-ledger posting, procurement approvals, dispatch and proof of delivery, audited credit limits and approvals, granular permissions, notifications, barcode/QR traceability and production hosting/backup controls. See [task.md](task.md) for the current coverage and delivery sequence. The prototype should not be treated as a complete production ERP.
+Further delivery is still needed for field boundary drawing and offline sync, batch quarantine/recall controls and expiry alerts, harvest-to-store posting and invoice reconciliation, full contract inspection and farmer settlement, automated machinery invoice posting, statutory payroll calculations and bank payment files, payroll-to-ledger posting, leave balances, budgets and general-ledger posting, procurement approvals, dispatch and proof of delivery, audited credit limits and approvals, granular permissions, notifications, barcode/QR traceability and production hosting/backup controls. See [task.md](task.md) for the current coverage and delivery sequence. The prototype should not be treated as a complete production ERP.
 
 ## Data and security
 

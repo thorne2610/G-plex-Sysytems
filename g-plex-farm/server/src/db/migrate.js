@@ -30,6 +30,20 @@ export function runMigrations() {
   if (!grnItemColumns.has('batch_number')) db.exec('ALTER TABLE grn_items ADD COLUMN batch_number TEXT');
   if (!grnItemColumns.has('expiry_date')) db.exec('ALTER TABLE grn_items ADD COLUMN expiry_date TEXT');
   const activityColumns = new Set(db.prepare("PRAGMA table_info('field_activities')").all().map(column => column.name));
+  const assetColumns = new Set(db.prepare("PRAGMA table_info('assets')").all().map(column => column.name));
+  for (const [column, definition] of [
+    ['assigned_operator_id', 'INTEGER REFERENCES employees(id)'],
+    ['hour_meter', 'REAL NOT NULL DEFAULT 0'],
+    ['odometer_reading', 'REAL NOT NULL DEFAULT 0'],
+    ['insurance_expiry', 'TEXT'],
+    ['inspection_due', 'TEXT'],
+    ['licence_expiry', 'TEXT'],
+  ]) {
+    if (!assetColumns.has(column)) db.exec(`ALTER TABLE assets ADD COLUMN ${column} ${definition}`);
+  }
+  const maintenanceColumns = new Set(db.prepare("PRAGMA table_info('maintenance_records')").all().map(column => column.name));
+  if (!maintenanceColumns.has('spare_parts_cost')) db.exec('ALTER TABLE maintenance_records ADD COLUMN spare_parts_cost REAL NOT NULL DEFAULT 0');
+  if (!maintenanceColumns.has('downtime_hours')) db.exec('ALTER TABLE maintenance_records ADD COLUMN downtime_hours REAL NOT NULL DEFAULT 0');
   const activityUpgrades = [
     ['warehouse_id', 'INTEGER REFERENCES warehouses(id)'],
     ['stock_movement_id', 'INTEGER REFERENCES stock_movements(id)'],

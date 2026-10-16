@@ -24,7 +24,8 @@ This is an in-progress web ERP prototype. The checks below describe what is curr
 - [ ] Harvest-to-warehouse posting, lot-level grading and storage movements, customer sales/invoice reconciliation, dispatch, delivery notes and proof of delivery.
 - [ ] Full contract farmer workflow: registration verification, credit-limit and issue approvals, contracts, field inspections, input-support approvals, soil testing, financing, deliveries, harvest deductions, settlement and closure. POS repayment currently updates farmer balances but does not yet post to the general ledger or enforce configurable credit limits.
 - [ ] Machinery/fleet operations: assigned operators, hour-meter/odometer history, daily work sheets, field-service costing, fuel issue/consumption reconciliation, work orders, spare parts, breakdown downtime, insurance/licence/inspection alerts and mechanisation billing by farmer and acreage.
-- [ ] HR and payroll: employee/worker records, department and contract, attendance, approved timesheets, field/piece-rate work approvals, leave, payroll runs, allowances/deductions, safety training/incidents/PPE and performance reporting.
+- [x] HR foundation: employee/worker records for permanent, seasonal, casual, operator, agronomist and contractor types; departments/contracts; attendance and supervisor field work sheets; acreage/headcount/hours; piece-rate calculation and manager review; leave and safety/training/incident/PPE records; payroll draft runs with allowances/deductions and approval/payment states.
+- [ ] Complete HR/payroll: edit/terminate employee records, leave balances and conflict checks, full approved timesheet locking, statutory payroll calculations and payslips, bank export, payroll ledger posting and richer performance reporting.
 - [ ] Fertiliser/chemical governance: approved catalogue, suppliers/prices, lot and expiry management, storage controls, agronomist-authorised plans, application-versus-plan exceptions, safety data and access to applicable Kenyan guidance.
 - [ ] Finance controls: budgets, approvals, expense capture, general-ledger posting, bank/payment reconciliation, farm/field/crop profitability and budget-versus-actual reports.
 - [ ] Procurement requisition and approval limits, supplier quote comparison, invoice/payment matching and audit-ready approvals.
@@ -34,7 +35,7 @@ This is an in-progress web ERP prototype. The checks below describe what is curr
 
 1. Organization hierarchy and access model: farms, blocks, stores, departments, staff and role assignments.
 2. Crop and contract operations: field plans, approved inputs, inspections, attendance/time capture, harvest and farmer settlement.
-3. Stock and machinery traceability: lot/expiry balances, quarantine/recall and expiry alerts, authorised issue/returns, maintenance/spares and field work sheets.
+3. Stock and machinery traceability: lot/expiry balances, quarantine/recall and expiry alerts, authorised issue/returns, maintenance/spares/downtime, operator and meter records, machine work sheets and per-acre mechanisation billing status.
 4. Finance, procurement, dispatch and approval flows with auditable accounting links.
 5. Offline field capture/sync, management analytics, security review, migration rehearsal, backup/restore rehearsal and a controlled pilot.
 

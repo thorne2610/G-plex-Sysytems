@@ -22,6 +22,7 @@ export default function Assets() {
     queryKey: ['assets'],
     queryFn: () => api.get('/assets'),
   });
+  const { data: staff } = useQuery({ queryKey: ['staffEmployees'], queryFn: () => api.get('/staff/employees') });
 
   const { data: assetDetail } = useQuery({
     queryKey: ['assetDetail', selectedAsset?.id],
@@ -86,9 +87,9 @@ export default function Assets() {
 
   const getStatusColor = (s) => {
     switch (s) {
-      case 'operational': return 'green';
+      case 'active': return 'green';
       case 'maintenance': return 'orange';
-      case 'broken': return 'red';
+      case 'disposed': return 'red';
       default: return 'default';
     }
   };
@@ -140,6 +141,7 @@ export default function Assets() {
       key: 'status',
       render: (s) => <Tag color={getStatusColor(s)}>{s?.toUpperCase()}</Tag>,
     },
+    { title: 'Assigned Operator', dataIndex: 'operator_name', key: 'operator_name', render: (v) => v || '—' },
     {
       title: 'Actions',
       key: 'actions',
@@ -230,9 +232,9 @@ export default function Assets() {
                 <Select.Option value="tractor">Tractor</Select.Option>
                 <Select.Option value="vehicle">Vehicle / Pickup</Select.Option>
                 <Select.Option value="implement">Implement / Plough / Harrow</Select.Option>
-                <Select.Option value="irrigation">Irrigation Pump / Equipment</Select.Option>
-                <Select.Option value="generator">Generator</Select.Option>
-                <Select.Option value="workshop">Workshop Tool</Select.Option>
+                <Select.Option value="equipment">Irrigation Pump / Equipment</Select.Option>
+                <Select.Option value="equipment">Generator</Select.Option>
+                <Select.Option value="other">Workshop Tool</Select.Option>
               </Select>
             </Form.Item>
             <Form.Item orientation="vertical" style={{ width: 190 }} name="make" label="Make / Brand">
@@ -253,6 +255,19 @@ export default function Assets() {
             <Form.Item orientation="vertical" style={{ width: 190 }} name="purchase_cost" label="Cost (KES)">
               <InputNumber style={{ width: '100%' }} min={0} />
             </Form.Item>
+          </Space>
+
+          <Space orientation="horizontal" style={{ width: '100%' }} size="middle">
+            <Form.Item name="assigned_operator_id" label="Assigned Operator" style={{ width: 280 }}>
+              <Select allowClear showSearch optionFilterProp="label" placeholder="Select staff operator" options={(staff?.data || []).filter(person => person.status === 'active').map(person => ({ value: person.id, label: `${person.employee_no} · ${person.name}` }))} />
+            </Form.Item>
+            <Form.Item name="hour_meter" label="Current Hour Meter" style={{ width: 180 }}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item name="odometer_reading" label="Odometer" style={{ width: 180 }}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+          </Space>
+          <Space orientation="horizontal" style={{ width: '100%' }} size="middle">
+            <Form.Item name="insurance_expiry" label="Insurance Expiry" style={{ width: 190 }}><Input type="date" /></Form.Item>
+            <Form.Item name="inspection_due" label="Inspection Due" style={{ width: 190 }}><Input type="date" /></Form.Item>
+            <Form.Item name="licence_expiry" label="Licence Expiry" style={{ width: 190 }}><Input type="date" /></Form.Item>
           </Space>
 
           <Space orientation="horizontal" style={{ width: '100%' }} size="middle">
@@ -336,6 +351,10 @@ export default function Assets() {
               <Input type="date" />
             </Form.Item>
           </Space>
+          <Space orientation="horizontal" style={{ width: '100%' }} size="middle">
+            <Form.Item name="spare_parts_cost" label="Spare parts cost (KES)" style={{ width: 220 }}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item name="downtime_hours" label="Downtime (hours)" style={{ width: 220 }}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+          </Space>
         </Form>
       </Modal>
 
@@ -356,6 +375,9 @@ export default function Assets() {
               </Descriptions.Item>
               <Descriptions.Item label="Make & Model">{detail.make} {detail.model}</Descriptions.Item>
               <Descriptions.Item label="Serial / Reg">{detail.serial_no || 'N/A'}</Descriptions.Item>
+              <Descriptions.Item label="Assigned operator">{detail.operator_name || 'Unassigned'}</Descriptions.Item>
+              <Descriptions.Item label="Meter / odometer">{detail.hour_meter || 0} h / {detail.odometer_reading || 0}</Descriptions.Item>
+              <Descriptions.Item label="Insurance / inspection">{detail.insurance_expiry || '—'} / {detail.inspection_due || '—'}</Descriptions.Item>
               <Descriptions.Item label="Purchase Cost">KES {Number(detail.purchase_cost || 0).toLocaleString()}</Descriptions.Item>
               <Descriptions.Item label="Book Value">
                 <Text strong style={{ color: '#2e7d32' }}>KES {Number(detail.current_value || 0).toLocaleString()}</Text>
@@ -390,6 +412,8 @@ export default function Assets() {
                 { title: 'Description', dataIndex: 'description', key: 'description' },
                 { title: 'Cost', dataIndex: 'cost', key: 'cost', render: (c) => <Text strong>KES {Number(c).toLocaleString()}</Text> },
                 { title: 'Mechanic', dataIndex: 'done_by', key: 'done_by', render: (d) => d || '—' },
+                { title: 'Parts (KES)', dataIndex: 'spare_parts_cost', key: 'spare_parts_cost', render: money => `KES ${Number(money || 0).toLocaleString()}` },
+                { title: 'Downtime', dataIndex: 'downtime_hours', key: 'downtime_hours', render: hours => `${Number(hours || 0)} h` },
               ]}
               locale={{ emptyText: 'No maintenance records' }}
             />

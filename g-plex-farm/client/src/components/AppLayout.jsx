@@ -18,6 +18,7 @@ import {
   CheckCircleOutlined,
   DollarOutlined,
   FileDoneOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
@@ -109,8 +110,10 @@ export default function AppLayout() {
       label: 'Machinery & Assets',
       children: [
         { key: '/assets', icon: <ToolOutlined />, label: 'Fleet & Equipment' },
+        { key: '/machinery-work', icon: <ClockCircleOutlined />, label: 'Work Sheets & Service Billing' },
       ],
     },
+    { key: '/staff', icon: <TeamOutlined />, label: 'Staff & Payroll' },
     {
       key: '/reports',
       icon: <BarChartOutlined />,

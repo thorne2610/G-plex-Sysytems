@@ -23,6 +23,8 @@ import Users from './pages/Users.jsx';
 import POS from './pages/POS.jsx';
 import Growers from './pages/Growers.jsx';
 import SeedQuality from './pages/SeedQuality.jsx';
+import Staff from './pages/Staff.jsx';
+import MachineryWork from './pages/MachineryWork.jsx';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -87,6 +89,8 @@ export default function App() {
         <Route path="purchase-orders" element={<PurchaseOrders />} />
         <Route path="grn" element={<GRN />} />
         <Route path="assets" element={<Assets />} />
+        <Route path="machinery-work" element={<MachineryWork />} />
+        <Route path="staff" element={<Staff />} />
         <Route path="reports" element={<Reports />} />
         <Route path="users" element={<Users />} />
       </Route>

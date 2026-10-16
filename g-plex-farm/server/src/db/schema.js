@@ -255,6 +255,12 @@ CREATE TABLE IF NOT EXISTS assets (
   salvage_value   REAL    NOT NULL DEFAULT 0,
   current_value   REAL    NOT NULL DEFAULT 0,
   status          TEXT    NOT NULL DEFAULT 'active' CHECK(status IN ('active','maintenance','disposed')),
+  assigned_operator_id INTEGER REFERENCES employees(id),
+  hour_meter      REAL NOT NULL DEFAULT 0,
+  odometer_reading REAL NOT NULL DEFAULT 0,
+  insurance_expiry TEXT,
+  inspection_due TEXT,
+  licence_expiry TEXT,
   notes           TEXT,
   created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
@@ -292,10 +298,158 @@ CREATE TABLE IF NOT EXISTS maintenance_records (
   cost              REAL    NOT NULL DEFAULT 0,
   done_by           TEXT,
   next_service_date TEXT,
+  spare_parts_cost REAL NOT NULL DEFAULT 0,
+  downtime_hours REAL NOT NULL DEFAULT 0,
   notes             TEXT,
   created_by        INTEGER NOT NULL REFERENCES users(id),
   created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS employees (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  employee_no TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  worker_type TEXT NOT NULL CHECK(worker_type IN ('permanent','seasonal','casual','operator','agronomist','contractor')),
+  department TEXT,
+  job_title TEXT,
+  phone TEXT,
+  email TEXT,
+  contract_ref TEXT,
+  start_date TEXT,
+  end_date TEXT,
+  pay_type TEXT NOT NULL DEFAULT 'monthly' CHECK(pay_type IN ('monthly','daily','hourly','piece_rate')),
+  base_rate REAL NOT NULL DEFAULT 0 CHECK(base_rate >= 0),
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','inactive')),
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS attendance_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  employee_id INTEGER NOT NULL REFERENCES employees(id),
+  work_date TEXT NOT NULL,
+  clock_in TEXT,
+  clock_out TEXT,
+  hours REAL NOT NULL DEFAULT 0 CHECK(hours >= 0),
+  status TEXT NOT NULL DEFAULT 'present' CHECK(status IN ('present','absent','leave','offsite')),
+  farm_id INTEGER REFERENCES farms(id),
+  notes TEXT,
+  approved_by INTEGER REFERENCES users(id),
+  approved_at TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(employee_id, work_date)
+);
+
+CREATE TABLE IF NOT EXISTS labour_work_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  work_date TEXT NOT NULL,
+  employee_id INTEGER REFERENCES employees(id),
+  farm_id INTEGER REFERENCES farms(id),
+  field_id INTEGER REFERENCES fields(id),
+  task TEXT NOT NULL,
+  worker_count INTEGER NOT NULL DEFAULT 1 CHECK(worker_count > 0),
+  hours REAL NOT NULL DEFAULT 0 CHECK(hours >= 0),
+  acreage REAL NOT NULL DEFAULT 0 CHECK(acreage >= 0),
+  quantity REAL NOT NULL DEFAULT 0 CHECK(quantity >= 0),
+  quantity_unit TEXT,
+  pay_type TEXT NOT NULL DEFAULT 'hourly' CHECK(pay_type IN ('hourly','daily','piece_rate','unpaid')),
+  agreed_rate REAL NOT NULL DEFAULT 0 CHECK(agreed_rate >= 0),
+  amount REAL NOT NULL DEFAULT 0 CHECK(amount >= 0),
+  status TEXT NOT NULL DEFAULT 'submitted' CHECK(status IN ('submitted','approved','rejected','paid')),
+  approved_by INTEGER REFERENCES users(id),
+  approved_at TEXT,
+  notes TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS leave_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  employee_id INTEGER NOT NULL REFERENCES employees(id),
+  leave_type TEXT NOT NULL,
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  days REAL NOT NULL CHECK(days > 0),
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+  approved_by INTEGER REFERENCES users(id),
+  approved_at TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS safety_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  employee_id INTEGER REFERENCES employees(id),
+  record_type TEXT NOT NULL CHECK(record_type IN ('training','incident','ppe')),
+  event_date TEXT NOT NULL,
+  description TEXT NOT NULL,
+  severity TEXT,
+  expiry_date TEXT,
+  action_taken TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS payroll_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ref_no TEXT NOT NULL UNIQUE,
+  period_start TEXT NOT NULL,
+  period_end TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','approved','paid')),
+  gross_total REAL NOT NULL DEFAULT 0,
+  deduction_total REAL NOT NULL DEFAULT 0,
+  net_total REAL NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  approved_by INTEGER REFERENCES users(id),
+  paid_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  approved_at TEXT,
+  paid_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS payroll_lines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  payroll_run_id INTEGER NOT NULL REFERENCES payroll_runs(id),
+  employee_id INTEGER NOT NULL REFERENCES employees(id),
+  earnings REAL NOT NULL DEFAULT 0 CHECK(earnings >= 0),
+  allowances REAL NOT NULL DEFAULT 0 CHECK(allowances >= 0),
+  deductions REAL NOT NULL DEFAULT 0 CHECK(deductions >= 0),
+  net_pay REAL NOT NULL DEFAULT 0,
+  notes TEXT,
+  UNIQUE(payroll_run_id, employee_id)
+);
+
+CREATE TABLE IF NOT EXISTS machinery_work_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ref_no TEXT NOT NULL UNIQUE,
+  asset_id INTEGER NOT NULL REFERENCES assets(id),
+  operator_id INTEGER REFERENCES employees(id),
+  farm_id INTEGER REFERENCES farms(id),
+  field_id INTEGER REFERENCES fields(id),
+  grower_id INTEGER REFERENCES growers(id),
+  work_date TEXT NOT NULL,
+  service_type TEXT NOT NULL,
+  meter_start REAL,
+  meter_end REAL,
+  hours REAL NOT NULL DEFAULT 0 CHECK(hours >= 0),
+  fuel_litres REAL NOT NULL DEFAULT 0 CHECK(fuel_litres >= 0),
+  acreage REAL NOT NULL DEFAULT 0 CHECK(acreage >= 0),
+  rate_per_acre REAL NOT NULL DEFAULT 0 CHECK(rate_per_acre >= 0),
+  amount_billed REAL NOT NULL DEFAULT 0 CHECK(amount_billed >= 0),
+  status TEXT NOT NULL DEFAULT 'planned' CHECK(status IN ('planned','in_progress','completed','billed')),
+  bill_ref TEXT,
+  notes TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_records(work_date, employee_id);
+CREATE INDEX IF NOT EXISTS idx_labour_status_date ON labour_work_logs(status, work_date);
+CREATE INDEX IF NOT EXISTS idx_machinery_work_date ON machinery_work_logs(work_date, status);
 
 /* ─────────────────────────────────────────────
    MODULE 4 — ACCOUNTS & FINANCE
