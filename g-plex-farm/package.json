@@ -1,0 +1,21 @@
+{
+  "name": "g-plex-farm",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "start": "npm run build && node server/src/index.js",
+    "build": "npm run build --workspace=client",
+    "migrate": "node server/src/db/migrate.js",
+    "test:e2e": "node server/test_e2e.mjs",
+    "test:pos": "node server/test_pos_features.mjs",
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "install:all": "npm install && npm install --workspace=server && npm install --workspace=client"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
