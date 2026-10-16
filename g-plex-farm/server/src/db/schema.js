@@ -198,6 +198,7 @@ CREATE TABLE IF NOT EXISTS stock_movements (
   type          TEXT    NOT NULL CHECK(type IN ('receipt','issue','transfer_out','transfer_in','adjustment','opening')),
   product_id    INTEGER NOT NULL REFERENCES products(id),
   warehouse_id  INTEGER NOT NULL REFERENCES warehouses(id),
+  batch_id      INTEGER REFERENCES stock_batches(id),
   qty           REAL    NOT NULL DEFAULT 0,
   unit_cost     REAL    NOT NULL DEFAULT 0,
   total_cost    REAL    NOT NULL DEFAULT 0,
@@ -215,6 +216,25 @@ CREATE TABLE IF NOT EXISTS stock_balances (
   qty_on_hand  REAL    NOT NULL DEFAULT 0,
   updated_at   TEXT    NOT NULL DEFAULT (datetime('now')),
   UNIQUE(product_id, warehouse_id)
+);
+
+CREATE TABLE IF NOT EXISTS stock_batches (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id      INTEGER NOT NULL REFERENCES products(id),
+  warehouse_id    INTEGER NOT NULL REFERENCES warehouses(id),
+  batch_number    TEXT NOT NULL,
+  manufacturer_batch TEXT,
+  received_date   TEXT NOT NULL DEFAULT (date('now')),
+  expiry_date     TEXT,
+  supplier_id     INTEGER REFERENCES suppliers(id),
+  seed_lot_id     INTEGER REFERENCES seed_lots(id),
+  qty_on_hand     REAL NOT NULL DEFAULT 0,
+  unit_cost       REAL NOT NULL DEFAULT 0,
+  status          TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','quarantined','expired','depleted')),
+  notes           TEXT,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(product_id, warehouse_id, batch_number)
 );
 
 /* ─────────────────────────────────────────────
@@ -695,6 +715,8 @@ CREATE TABLE IF NOT EXISTS grn_items (
   qty_ordered  REAL    NOT NULL DEFAULT 0,
   qty_received REAL    NOT NULL DEFAULT 0,
   unit_price   REAL    NOT NULL DEFAULT 0,
+  batch_number TEXT,
+  expiry_date  TEXT,
   line_total   REAL    NOT NULL DEFAULT 0
 );
 
@@ -775,6 +797,7 @@ CREATE TABLE IF NOT EXISTS pos_transactions (
   type            TEXT    NOT NULL CHECK(type IN ('sale','credit_issue')),
   farmer_name     TEXT    NOT NULL,
   grower_id       INTEGER REFERENCES growers(id),
+  warehouse_id    INTEGER REFERENCES warehouses(id),
   contract_ref    TEXT,
   payment_method  TEXT,
   recovery_plan   TEXT,
@@ -791,10 +814,24 @@ CREATE TABLE IF NOT EXISTS pos_transaction_items (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   transaction_id  INTEGER NOT NULL REFERENCES pos_transactions(id),
   product_id      INTEGER NOT NULL REFERENCES products(id),
+  batch_id        INTEGER REFERENCES stock_batches(id),
   lot_number      TEXT,
   qty             REAL    NOT NULL DEFAULT 1,
   unit_price      REAL    NOT NULL DEFAULT 0,
   line_total      REAL    NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS grower_credit_payments (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  ref_no      TEXT NOT NULL UNIQUE,
+  grower_id   INTEGER NOT NULL REFERENCES growers(id),
+  amount      REAL NOT NULL CHECK(amount > 0),
+  date        TEXT NOT NULL DEFAULT (date('now')),
+  mode        TEXT NOT NULL DEFAULT 'cash' CHECK(mode IN ('cash','bank','mpesa','cheque','harvest_recovery')),
+  reference   TEXT,
+  notes       TEXT,
+  created_by  INTEGER NOT NULL REFERENCES users(id),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 /* ─────────────────────────────────────────────
@@ -805,6 +842,8 @@ CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
 CREATE INDEX IF NOT EXISTS idx_stock_movements_product ON stock_movements(product_id);
 CREATE INDEX IF NOT EXISTS idx_stock_movements_warehouse ON stock_movements(warehouse_id);
+CREATE INDEX IF NOT EXISTS idx_stock_batches_product_warehouse ON stock_batches(product_id, warehouse_id, status, expiry_date);
+CREATE INDEX IF NOT EXISTS idx_grower_credit_payments_grower_date ON grower_credit_payments(grower_id, date);
 CREATE INDEX IF NOT EXISTS idx_stock_balances_product ON stock_balances(product_id);
 CREATE INDEX IF NOT EXISTS idx_journal_lines_account ON journal_lines(account_id);
 CREATE INDEX IF NOT EXISTS idx_journal_entries_date ON journal_entries(date);

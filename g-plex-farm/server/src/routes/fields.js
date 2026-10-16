@@ -205,15 +205,25 @@ export default async function fieldRoutes(app) {
     }
     let product = null;
     let stockBalance = null;
+    let stockBatch = null;
     if (v.product_id) {
       if (!v.warehouse_id || numberOrZero(v.quantity) <= 0) return reply.code(400).send({ success: false, message: 'Choose a store and enter a positive quantity when issuing a product to the field.' });
       product = db.prepare('SELECT id,cost_price,unit FROM products WHERE id=? AND is_active=1').get(v.product_id);
       if (!product) return reply.code(400).send({ success: false, message: 'Select an active inventory product.' });
       stockBalance = db.prepare('SELECT qty_on_hand FROM stock_balances WHERE product_id=? AND warehouse_id=?').get(v.product_id, v.warehouse_id);
       if (!stockBalance || Number(stockBalance.qty_on_hand) < numberOrZero(v.quantity)) return reply.code(400).send({ success: false, message: `Insufficient stock in the selected store. Available: ${Number(stockBalance?.qty_on_hand || 0)} ${product.unit}.` });
+      const batchCondition = textOrNull(v.input_batch_no) ? 'AND (batch_number=? OR manufacturer_batch=?)' : '';
+      stockBatch = db.prepare(`SELECT * FROM stock_batches WHERE product_id=? AND warehouse_id=? AND status='available' AND qty_on_hand>=? AND (expiry_date IS NULL OR expiry_date>=date('now')) ${batchCondition} ORDER BY CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END,expiry_date,received_date,id LIMIT 1`).get(
+        ...(textOrNull(v.input_batch_no)
+          ? [product.id, v.warehouse_id, numberOrZero(v.quantity), v.input_batch_no, v.input_batch_no]
+          : [product.id, v.warehouse_id, numberOrZero(v.quantity)])
+      );
+      if (!stockBatch) return reply.code(400).send({ success: false, message: textOrNull(v.input_batch_no)
+        ? `Batch ${v.input_batch_no} is not available in the selected store in sufficient quantity.`
+        : `No single unexpired batch has ${numberOrZero(v.quantity)} ${product.unit} available in the selected store.` });
     }
     const inputCost = product
-      ? numberOrZero(v.quantity) * Number(product.cost_price || 0)
+      ? numberOrZero(v.quantity) * Number(stockBatch?.unit_cost ?? product.cost_price ?? 0)
       : numberOrZero(v.input_cost);
     const labourCost = numberOrZero(v.labour_cost);
     const machineryCost = numberOrZero(v.machinery_cost);
@@ -224,7 +234,7 @@ export default async function fieldRoutes(app) {
     try {
       result = db.prepare(`INSERT INTO field_activities
         (field_cycle_id,date,activity_type,description,product_id,warehouse_id,input_batch_no,application_rate,application_rate_unit,target_pest,recommendation_ref,authorised_by_name,authorised_by_qualification,applied_by,quantity,quantity_unit,rainfall_mm,observation,severity,action_taken,workers,labour_hours,labour_cost,machinery_name,asset_id,machinery_hours,machinery_cost,input_cost,other_cost,total_cost,notes,created_by)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(req.params.id, v.date, v.activity_type, textOrNull(v.description), v.product_id || null, v.warehouse_id || null, textOrNull(v.input_batch_no), v.application_rate ?? null, textOrNull(v.application_rate_unit), textOrNull(v.target_pest), textOrNull(v.recommendation_ref), textOrNull(v.authorised_by_name), textOrNull(v.authorised_by_qualification), req.user.id, numberOrZero(v.quantity), textOrNull(v.quantity_unit) || product?.unit || null, v.rainfall_mm ?? null, textOrNull(v.observation), textOrNull(v.severity), textOrNull(v.action_taken), numberOrZero(v.workers), numberOrZero(v.labour_hours), labourCost, textOrNull(v.machinery_name), v.asset_id || null, numberOrZero(v.machinery_hours), machineryCost, inputCost, otherCost, totalCost, textOrNull(v.notes), req.user.id);
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(req.params.id, v.date, v.activity_type, textOrNull(v.description), v.product_id || null, v.warehouse_id || null, textOrNull(v.input_batch_no) || stockBatch?.batch_number || null, v.application_rate ?? null, textOrNull(v.application_rate_unit), textOrNull(v.target_pest), textOrNull(v.recommendation_ref), textOrNull(v.authorised_by_name), textOrNull(v.authorised_by_qualification), req.user.id, numberOrZero(v.quantity), textOrNull(v.quantity_unit) || product?.unit || null, v.rainfall_mm ?? null, textOrNull(v.observation), textOrNull(v.severity), textOrNull(v.action_taken), numberOrZero(v.workers), numberOrZero(v.labour_hours), labourCost, textOrNull(v.machinery_name), v.asset_id || null, numberOrZero(v.machinery_hours), machineryCost, inputCost, otherCost, totalCost, textOrNull(v.notes), req.user.id);
       if (product) {
         const currentQty = Number(stockBalance.qty_on_hand);
         const movementSummary = db.prepare(`SELECT COUNT(*) AS count,COALESCE(SUM(CASE WHEN type IN ('receipt','transfer_in','opening','adjustment') THEN qty WHEN type IN ('issue','transfer_out') THEN -qty ELSE 0 END),0) AS balance FROM stock_movements WHERE product_id=? AND warehouse_id=?`).get(product.id, v.warehouse_id);
@@ -239,15 +249,17 @@ export default async function fieldRoutes(app) {
             .run(openingRef, product.id, v.warehouse_id, openingQty, Number(product.cost_price || 0), openingQty * Number(product.cost_price || 0), req.user.id);
         }
         const movementRef = refNo(db, 'FIS', 'stock_movements');
-        const movement = db.prepare("INSERT INTO stock_movements (ref_no,type,product_id,warehouse_id,qty,unit_cost,total_cost,ref_doc,ref_id,notes,created_by) VALUES (?,'issue',?,?,?,?,?,'FIELD_ACTIVITY',?,?,?)")
-          .run(movementRef, product.id, v.warehouse_id, numberOrZero(v.quantity), Number(product.cost_price || 0), inputCost, result.lastInsertRowid, `Field cycle ${cycle.id} · ${v.input_batch_no || 'batch not specified'}`, req.user.id);
+        db.prepare("UPDATE stock_batches SET qty_on_hand=qty_on_hand-?,status=CASE WHEN qty_on_hand-?<=0 THEN 'depleted' ELSE 'available' END,updated_at=datetime('now') WHERE id=?")
+          .run(numberOrZero(v.quantity), numberOrZero(v.quantity), stockBatch.id);
+        const movement = db.prepare("INSERT INTO stock_movements (ref_no,type,product_id,warehouse_id,batch_id,qty,unit_cost,total_cost,ref_doc,ref_id,notes,created_by) VALUES (?,'issue',?,?,?,?,?,?,'FIELD_ACTIVITY',?,?,?)")
+          .run(movementRef, product.id, v.warehouse_id, stockBatch.id, numberOrZero(v.quantity), Number(stockBatch.unit_cost || 0), inputCost, result.lastInsertRowid, `Field cycle ${cycle.id} · ${stockBatch.batch_number}`, req.user.id);
         db.prepare('UPDATE field_activities SET stock_movement_id=? WHERE id=?').run(movement.lastInsertRowid, result.lastInsertRowid);
         db.prepare("UPDATE stock_balances SET qty_on_hand=?,updated_at=datetime('now') WHERE product_id=? AND warehouse_id=?")
           .run(currentQty - numberOrZero(v.quantity), product.id, v.warehouse_id);
         if (cycle.season_id) {
           const issueRef = refNo(db, 'FII', 'input_issues');
           db.prepare('INSERT INTO input_issues (ref_no,field_id,field_cycle_id,season_id,product_id,warehouse_id,date,qty,unit_cost,total_cost,notes,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-            .run(issueRef, cycle.field_id, cycle.id, cycle.season_id, product.id, v.warehouse_id, v.date, numberOrZero(v.quantity), Number(product.cost_price || 0), inputCost, textOrNull(v.notes) || `Issued for ${v.activity_type} · ${v.input_batch_no || 'batch not specified'}`, req.user.id);
+            .run(issueRef, cycle.field_id, cycle.id, cycle.season_id, product.id, v.warehouse_id, v.date, numberOrZero(v.quantity), Number(stockBatch.unit_cost || 0), inputCost, textOrNull(v.notes) || `Issued for ${v.activity_type} · ${stockBatch.batch_number}`, req.user.id);
         }
       }
       db.prepare("UPDATE field_cycles SET status=CASE WHEN status='planned' THEN 'active' ELSE status END,updated_at=datetime('now') WHERE id=?").run(req.params.id);

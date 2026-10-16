@@ -67,6 +67,8 @@ export default function GRN() {
           qty_ordered: it.qty,
           qty_received: it.qty,
           unit_price: it.unit_price,
+          batch_number: '',
+          expiry_date: '',
         }));
         form.setFieldsValue({ items });
       }
@@ -221,11 +223,17 @@ export default function GRN() {
                   const it = form.getFieldValue(['items', name]);
                   return (
                     <Card key={key} size="small" style={{ marginBottom: 8, background: '#fafafa' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(160px,1fr) repeat(3,minmax(120px,150px))', gap: 12, alignItems: 'end' }}>
                         <div>
                           <strong>{it?.product_name || `Item #${name + 1}`}</strong>
                           <div style={{ fontSize: 12, color: '#666' }}>Ordered: {it?.qty_ordered} {it?.unit} @ KES {it?.unit_price}</div>
                         </div>
+                        <Form.Item {...restField} name={[name, 'batch_number']} label="Supplier / Seed Lot" rules={[{ required: true, whitespace: true, message: 'Enter a batch / lot number before posting stock' }]} style={{ margin: 0 }}>
+                          <Input placeholder="Lot number" />
+                        </Form.Item>
+                        <Form.Item {...restField} name={[name, 'expiry_date']} label="Expiry Date" style={{ margin: 0 }}>
+                          <Input type="date" />
+                        </Form.Item>
                         <Form.Item
                           {...restField}
                           name={[name, 'qty_received']}

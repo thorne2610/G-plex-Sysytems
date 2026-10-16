@@ -22,8 +22,9 @@ For local development with Vite hot reload, use npm run dev; the API runs on por
 - Dashboard, login, individual accounts and role-based API authorization.
 - Customer directory, quotations, sales orders, invoices and receipts.
 - Multi-warehouse product catalogue, stock movements, purchase orders and goods received notes.
+- Store batch/lot records with received and expiry dates, supplier traceability, batch-level movement history and earliest-expiry-first stock issue from POS and field activities.
 - Contract grower register and seed-lot quality records.
-- Farmer POS for counter purchases and approved seed/fertiliser issues on a grower account, with harvest deduction, instalment or service-point recovery options.
+- Farmer POS for walk-in counter purchases and registered-grower input credit, with store selection, tax based on product VAT configuration, receipt lot traceability, recovery terms and repayment recording against the farmer balance.
 - Farm, block and unique field registers, including acreage, location and GeoJSON farm/field boundary capture.
 - Crop-agnostic production cycles with seed source/batch, land preparation, planting, spacing, seed rate and expected harvest records.
 - Field activity logs for applications, irrigation, rainfall, scouting, crop health, labour, machine hours and actual costs. Product issues can decrement a selected store balance and are linked to a stock movement.
@@ -31,11 +32,11 @@ For local development with Vite hot reload, use npm run dev; the API runs on por
 - Chemical use records require a manually entered product-label/guidance reference, approved rate and named/qualified authoriser; the application does not calculate or prescribe pesticide rates.
 - Existing machinery/assets register, fuel logs and service records.
 
-The POS and other browser screens use the app's local API and SQLite database. Configure real prices, tax, credit limits, approval rights, stock policy and payment reconciliation before operational use.
+The POS and other browser screens use the app's local API and SQLite database. Seed/fertiliser issued to a farmer is recorded as credit because these inputs are consumed; physical-return leasing is not used for them. Configure real prices, tax, credit limits, approval rights, stock policy and payment reconciliation before operational use.
 
 ## Planned against the full G-Plex requirements
 
-Further delivery is still needed for field boundary drawing and offline sync, input lot/expiry controls, harvest-to-store posting and invoice reconciliation, full contract inspection and farmer settlement, equipment work sheets and mechanisation billing, HR/attendance/timesheets/piece-rate/payroll/safety, budgets and general-ledger posting, procurement approvals, dispatch and proof of delivery, audit history, granular permissions, notifications, barcode/QR traceability and production hosting/backup controls. See [task.md](task.md) for the current coverage and delivery sequence. The prototype should not be treated as a complete production ERP.
+Further delivery is still needed for field boundary drawing and offline sync, batch quarantine/recall controls and expiry alerts, harvest-to-store posting and invoice reconciliation, full contract inspection and farmer settlement, equipment work sheets and mechanisation billing, HR/attendance/timesheets/piece-rate/payroll/safety, budgets and general-ledger posting, procurement approvals, dispatch and proof of delivery, audited credit limits and approvals, granular permissions, notifications, barcode/QR traceability and production hosting/backup controls. See [task.md](task.md) for the current coverage and delivery sequence. The prototype should not be treated as a complete production ERP.
 
 ## Data and security
 

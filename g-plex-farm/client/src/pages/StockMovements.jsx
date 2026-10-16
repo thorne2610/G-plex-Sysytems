@@ -31,6 +31,11 @@ export default function StockMovements() {
     queryFn: () => api.get('/stock/movements'),
   });
 
+  const { data: batches, isLoading: loadingBatches } = useQuery({
+    queryKey: ['stockBatches', warehouseFilter],
+    queryFn: () => api.get(`/stock/batches${warehouseFilter ? `?warehouse_id=${warehouseFilter}` : ''}`),
+  });
+
   const { data: warehouses } = useQuery({
     queryKey: ['warehouses'],
     queryFn: () => api.get('/warehouses'),
@@ -49,6 +54,8 @@ export default function StockMovements() {
       form.resetFields();
       queryClient.invalidateQueries(['stockBalances']);
       queryClient.invalidateQueries(['stockMovements']);
+      queryClient.invalidateQueries(['stockBatches']);
+      queryClient.invalidateQueries(['posBatches']);
       queryClient.invalidateQueries(['products']);
       queryClient.invalidateQueries(['dashboardSummary']);
     },
@@ -145,6 +152,12 @@ export default function StockMovements() {
       title: 'Product',
       dataIndex: 'product_name',
       key: 'product_name',
+    },
+    {
+      title: 'Batch / Lot',
+      dataIndex: 'batch_number',
+      key: 'batch_number',
+      render: (batch) => batch ? <Tag color="cyan">{batch}</Tag> : <Text type="secondary">Legacy / untracked</Text>,
     },
     {
       title: 'Warehouse',
@@ -256,6 +269,29 @@ export default function StockMovements() {
                 />
               ),
             },
+            {
+              key: 'batches',
+              label: 'Batch & Expiry Tracking',
+              children: (
+                <Table
+                  dataSource={batches?.data || []}
+                  loading={loadingBatches}
+                  rowKey="id"
+                  pagination={{ pageSize: 15 }}
+                  size="middle"
+                  columns={[
+                    { title: 'Batch / Supplier Lot', dataIndex: 'batch_number', key: 'batch_number', render: (value) => <Text strong>{value}</Text> },
+                    { title: 'Product', dataIndex: 'product_name', key: 'product_name', render: (value, row) => <>{value}<div><Text type="secondary" style={{ fontSize: 11 }}>{row.sku}</Text></div></> },
+                    { title: 'Store', dataIndex: 'warehouse_name', key: 'warehouse_name' },
+                    { title: 'Available', dataIndex: 'qty_on_hand', key: 'qty_on_hand', render: (value, row) => `${Number(value || 0).toLocaleString()} ${row.unit}` },
+                    { title: 'Received', dataIndex: 'received_date', key: 'received_date' },
+                    { title: 'Expiry', dataIndex: 'expiry_date', key: 'expiry_date', render: (value) => value || <Text type="secondary">Not supplied</Text> },
+                    { title: 'Status', dataIndex: 'expiry_state', key: 'expiry_state', render: (value) => <Tag color={value === 'expired' ? 'red' : value === 'expiring_soon' ? 'orange' : value === 'quarantined' ? 'purple' : value === 'depleted' ? 'default' : 'green'}>{String(value || 'available').replace('_', ' ').toUpperCase()}</Tag> },
+                  ]}
+                  locale={{ emptyText: 'No tracked batches yet. Record batch numbers when receiving goods.' }}
+                />
+              ),
+            },
           ]}
         />
       </Card>
@@ -330,6 +366,17 @@ export default function StockMovements() {
             <Form.Item name="new_qty" label="New Physical Count (Quantity)" rules={[{ required: true }]}>
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
+          )}
+
+          {modalType === 'receive' && (
+            <Space style={{ width: '100%' }} size="middle" align="start">
+              <Form.Item name="batch_number" label="Batch / Supplier Lot" rules={[{ required: true, whitespace: true, message: 'Enter the supplier batch or lot number' }]} style={{ width: 250 }}>
+                <Input placeholder="e.g. LOT-2026-014" />
+              </Form.Item>
+              <Form.Item name="expiry_date" label="Expiry Date (where applicable)" style={{ width: 220 }}>
+                <Input type="date" />
+              </Form.Item>
+            </Space>
           )}
 
           <Form.Item name="notes" label="Notes / Reason / Reference Doc">

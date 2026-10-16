@@ -20,6 +20,15 @@ export function runMigrations() {
   if (!fieldColumns.has('gps_boundary')) db.exec('ALTER TABLE fields ADD COLUMN gps_boundary TEXT');
   const issueColumns = new Set(db.prepare("PRAGMA table_info('input_issues')").all().map(column => column.name));
   if (!issueColumns.has('field_cycle_id')) db.exec('ALTER TABLE input_issues ADD COLUMN field_cycle_id INTEGER REFERENCES field_cycles(id)');
+  const stockMovementColumns = new Set(db.prepare("PRAGMA table_info('stock_movements')").all().map(column => column.name));
+  if (!stockMovementColumns.has('batch_id')) db.exec('ALTER TABLE stock_movements ADD COLUMN batch_id INTEGER REFERENCES stock_batches(id)');
+  const posColumns = new Set(db.prepare("PRAGMA table_info('pos_transactions')").all().map(column => column.name));
+  if (!posColumns.has('warehouse_id')) db.exec('ALTER TABLE pos_transactions ADD COLUMN warehouse_id INTEGER REFERENCES warehouses(id)');
+  const posItemColumns = new Set(db.prepare("PRAGMA table_info('pos_transaction_items')").all().map(column => column.name));
+  if (!posItemColumns.has('batch_id')) db.exec('ALTER TABLE pos_transaction_items ADD COLUMN batch_id INTEGER REFERENCES stock_batches(id)');
+  const grnItemColumns = new Set(db.prepare("PRAGMA table_info('grn_items')").all().map(column => column.name));
+  if (!grnItemColumns.has('batch_number')) db.exec('ALTER TABLE grn_items ADD COLUMN batch_number TEXT');
+  if (!grnItemColumns.has('expiry_date')) db.exec('ALTER TABLE grn_items ADD COLUMN expiry_date TEXT');
   const activityColumns = new Set(db.prepare("PRAGMA table_info('field_activities')").all().map(column => column.name));
   const activityUpgrades = [
     ['warehouse_id', 'INTEGER REFERENCES warehouses(id)'],
@@ -36,6 +45,15 @@ export function runMigrations() {
     if (!activityColumns.has(column)) db.exec(`ALTER TABLE field_activities ADD COLUMN ${column} ${definition}`);
   }
   db.exec('CREATE INDEX IF NOT EXISTS idx_fields_farm_block ON fields(farm_id, block_id, code)');
+  db.exec(`
+    INSERT OR IGNORE INTO stock_batches (product_id, warehouse_id, batch_number, received_date, qty_on_hand, unit_cost, status, notes)
+    SELECT sb.product_id, sb.warehouse_id, 'LEGACY-' || p.sku || '-W' || sb.warehouse_id,
+           date('now'), MAX(sb.qty_on_hand, 0), p.cost_price,
+           CASE WHEN sb.qty_on_hand > 0 THEN 'available' ELSE 'depleted' END,
+           'Opening balance carried forward during batch-tracking upgrade.'
+    FROM stock_balances sb JOIN products p ON p.id=sb.product_id
+    WHERE sb.qty_on_hand > 0
+  `);
 
   console.log('✅ Database schema applied');
 }
@@ -201,6 +219,17 @@ export async function seedDatabase() {
     insertBal.run(p4.lastInsertRowid, 1, 6);
     console.log('✅ Default POS input products and store stock seeded');
   }
+
+  // Seed a traceable opening lot after demo stock is inserted on first install.
+  db.exec(`
+    INSERT OR IGNORE INTO stock_batches (product_id,warehouse_id,batch_number,received_date,qty_on_hand,unit_cost,status,notes)
+    SELECT sb.product_id,sb.warehouse_id,'LEGACY-' || p.sku || '-W' || sb.warehouse_id,
+           date('now'),MAX(sb.qty_on_hand,0),p.cost_price,
+           CASE WHEN sb.qty_on_hand>0 THEN 'available' ELSE 'depleted' END,
+           'Opening balance. Replace this label with supplier batch data when physically verified.'
+    FROM stock_balances sb JOIN products p ON p.id=sb.product_id
+    WHERE sb.qty_on_hand>0
+  `);
 
   // ── Seed Quality Lots ────────────────────────────────────────
   const lotCount = db.prepare('SELECT COUNT(*) as c FROM seed_lots').get();
