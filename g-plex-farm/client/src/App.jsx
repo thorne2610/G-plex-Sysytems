@@ -25,6 +25,7 @@ import Growers from './pages/Growers.jsx';
 import SeedQuality from './pages/SeedQuality.jsx';
 import Staff from './pages/Staff.jsx';
 import MachineryWork from './pages/MachineryWork.jsx';
+import Feedback from './pages/Feedback.jsx';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="assets" element={<Assets />} />
         <Route path="machinery-work" element={<MachineryWork />} />
         <Route path="staff" element={<Staff />} />
+        <Route path="feedback" element={<Feedback />} />
         <Route path="reports" element={<Reports />} />
         <Route path="users" element={<Users />} />
       </Route>

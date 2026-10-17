@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import {
   AreaChartOutlined, CloudOutlined, EnvironmentOutlined, ExperimentOutlined, FieldTimeOutlined,
-  GoldOutlined, PlusOutlined, RocketOutlined, ShopOutlined, SproutOutlined, ToolOutlined,
+  GoldOutlined, PlusOutlined, RocketOutlined, ShopOutlined, SyncOutlined, ToolOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client.js';
@@ -207,7 +207,7 @@ export default function Fields() {
         </Col>
         <Col><Space wrap>
           <Button size="large" ghost icon={<EnvironmentOutlined />} onClick={() => openFarm()}>Register farm</Button>
-          <Button size="large" style={{ background: '#d5f28b', borderColor: '#d5f28b', color: '#1d3c2a', fontWeight: 700 }} icon={<SproutOutlined />} onClick={openCycle}>Open crop cycle</Button>
+          <Button size="large" style={{ background: '#d5f28b', borderColor: '#d5f28b', color: '#1d3c2a', fontWeight: 700 }} icon={<SyncOutlined />} onClick={openCycle}>Open crop cycle</Button>
         </Space></Col>
       </Row>
       <div style={{ marginTop: 23, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -218,7 +218,7 @@ export default function Fields() {
     <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
       <Col xs={12} md={6}><MetricCard title="Farms registered" value={farms.length} icon={<EnvironmentOutlined />} /></Col>
       <Col xs={12} md={6}><MetricCard title="Fields · mapped area" value={fields.length} suffix={`/ ${hectares(completedArea)}`} icon={<AreaChartOutlined />} tint="#f3efe3" color="#7d6537" /></Col>
-      <Col xs={12} md={6}><MetricCard title="Active crop cycles" value={activeCycles} icon={<SproutOutlined />} tint="#edf2f8" color="#44637c" /></Col>
+      <Col xs={12} md={6}><MetricCard title="Active crop cycles" value={activeCycles} icon={<SyncOutlined />} tint="#edf2f8" color="#44637c" /></Col>
       <Col xs={12} md={6}><MetricCard title="Harvest · tracked crops" value={totalHarvest} suffix="kg" icon={<GoldOutlined />} tint="#f8eee5" color="#92633c" /></Col>
     </Row>
 
@@ -244,7 +244,7 @@ export default function Fields() {
           <Row justify="space-between" align="middle" style={{ marginBottom: 14 }}><div><Title level={5} style={{ margin: 0 }}>Unique field register</Title><Text type="secondary">Each field belongs to a farm, optionally a block, and carries its own ID, acreage, soil and boundary.</Text></div><Button type="primary" icon={<PlusOutlined />} onClick={() => openField(null)}>Add field</Button></Row>
           <Table rowKey="id" loading={fieldsQ.isLoading} dataSource={fields} columns={fieldColumns} pagination={{ pageSize: 10 }} scroll={{ x: 950 }} />
         </> },
-        { key: 'cycles', label: <span><SproutOutlined /> Crop cycles</span>, children: <>
+        { key: 'cycles', label: <span><SyncOutlined /> Crop cycles</span>, children: <>
           <Row gutter={[10, 10]} align="middle" style={{ marginBottom: 14 }}>
             <Col flex="auto"><Title level={5} style={{ margin: 0 }}>Crop production records</Title><Text type="secondary">Crop and variety are free text so rotations and contracted crops are supported.</Text></Col>
             <Col><Button type="primary" icon={<PlusOutlined />} onClick={openCycle}>Open crop cycle</Button></Col>

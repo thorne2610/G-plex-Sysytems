@@ -31,6 +31,7 @@ import userRoutes from './routes/users.js';
 import posRoutes from './routes/pos.js';
 import growerRoutes from './routes/growers.js';
 import seedQualityRoutes from './routes/seedQuality.js';
+import feedbackRoutes from './routes/feedback.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '../.env') });
@@ -95,6 +96,7 @@ app.register(userRoutes,         { prefix: `${API}/users` });
 app.register(posRoutes,          { prefix: `${API}/pos` });
 app.register(growerRoutes,       { prefix: `${API}/growers` });
 app.register(seedQualityRoutes,  { prefix: `${API}/seed-quality` });
+app.register(feedbackRoutes,     { prefix: `${API}/feedback` });
 
 // ── Serve React SPA (Production) ───────────────────────────────
 const distPath = join(__dirname, '../../client/dist');

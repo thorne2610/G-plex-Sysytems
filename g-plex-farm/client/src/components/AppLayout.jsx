@@ -19,6 +19,7 @@ import {
   DollarOutlined,
   FileDoneOutlined,
   ClockCircleOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
@@ -114,6 +115,7 @@ export default function AppLayout() {
       ],
     },
     { key: '/staff', icon: <TeamOutlined />, label: 'Staff & Payroll' },
+    { key: '/feedback', icon: <MessageOutlined />, label: 'Customer Feedback & CSAT' },
     {
       key: '/reports',
       icon: <BarChartOutlined />,
