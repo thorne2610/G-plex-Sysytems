@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { getDb } from '../db/connection.js';
+import { ROLE_KEYS } from '../auth/permissions.js';
 
 export default async function userRoutes(app) {
   const AUTH = { preHandler: [app.authenticate] };
@@ -27,6 +28,9 @@ export default async function userRoutes(app) {
     if (!name || !email || !password || !role) {
       return reply.code(400).send({ success: false, message: 'name, email, password, and role are required' });
     }
+    if (!ROLE_KEYS.includes(role)) {
+      return reply.code(400).send({ success: false, message: 'Choose a valid role.' });
+    }
 
     const existing = db.prepare('SELECT id FROM users WHERE email=?').get(email.toLowerCase().trim());
     if (existing) {
@@ -46,6 +50,18 @@ export default async function userRoutes(app) {
   app.put('/:id', ADMIN_ONLY, (req, reply) => {
     const db = getDb();
     const { name, role, department, phone, is_active } = req.body;
+    if (!ROLE_KEYS.includes(role)) {
+      return reply.code(400).send({ success: false, message: 'Choose a valid role.' });
+    }
+    const target = db.prepare('SELECT role, is_active FROM users WHERE id=?').get(req.params.id);
+    if (!target) return reply.code(404).send({ success: false, message: 'User not found' });
+    const staysActiveAdmin = role === 'admin' && (is_active ?? 1) !== 0;
+    if (target.role === 'admin' && target.is_active && !staysActiveAdmin) {
+      const admins = db.prepare("SELECT COUNT(*) AS n FROM users WHERE role='admin' AND is_active=1").get().n;
+      if (admins <= 1) {
+        return reply.code(400).send({ success: false, message: 'This is the only active administrator. Create another administrator before changing or deactivating this one.' });
+      }
+    }
     db.prepare(`
       UPDATE users
       SET name=?, role=?, department=?, phone=?, is_active=?, updated_at=datetime('now')

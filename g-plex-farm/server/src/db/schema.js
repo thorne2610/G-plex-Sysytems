@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
   name          TEXT    NOT NULL,
   email         TEXT    NOT NULL UNIQUE,
   password_hash TEXT    NOT NULL,
-  role          TEXT    NOT NULL CHECK(role IN ('admin','farm_manager','accountant','store_keeper','sales_officer','procurement_officer')),
+  role          TEXT    NOT NULL CHECK(role IN ('admin','managing_director','farm_manager','agronomist','store_keeper','machinery_manager','hr_officer','accountant','procurement_officer','sales_officer','field_officer','auditor')),
   is_active     INTEGER NOT NULL DEFAULT 1,
   created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))

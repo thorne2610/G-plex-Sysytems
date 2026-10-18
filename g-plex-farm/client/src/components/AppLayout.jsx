@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layout, Menu, Button, Avatar, Space, Tag, Typography } from 'antd';
+import { Layout, Menu, Button, Avatar, Space, Tag, Typography, Result } from 'antd';
 import {
   DashboardOutlined,
   ShoppingOutlined,
@@ -20,6 +20,9 @@ import {
   FileDoneOutlined,
   ClockCircleOutlined,
   MessageOutlined,
+  AuditOutlined,
+  SafetyCertificateOutlined,
+  FileProtectOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
@@ -31,7 +34,7 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, permissions, roleLabel } = useAuthStore();
 
   const handleLogout = async () => {
     await logout();
@@ -48,7 +51,25 @@ export default function AppLayout() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
-  const menuItems = [
+
+  // Which part of the system each page belongs to (matches the server's permission list).
+  const PAGE_MODULE = {
+    '/dashboard': 'dashboard', '/pos': 'pos', '/fields': 'fields', '/growers': 'growers', '/contracts': 'contracts',
+    '/seed-quality': 'seed_quality', '/products': 'products', '/stock': 'stock',
+    '/customers': 'customers', '/quotations': 'sales', '/sales-orders': 'sales',
+    '/invoices': 'billing', '/receipts': 'billing', '/suppliers': 'suppliers',
+    '/purchase-orders': 'purchasing', '/grn': 'grn', '/assets': 'assets',
+    '/machinery-work': 'assets', '/staff': 'staff', '/feedback': 'feedback',
+    '/reports': 'reports', '/users': 'users', '/audit': 'audit',
+  };
+  const canSee = (module) => !module || !permissions || (permissions[module] && permissions[module] !== 'none');
+  const filterMenu = (items) => items
+    .map((item) => (item.children ? { ...item, children: filterMenu(item.children) } : item))
+    .filter((item) => (item.children ? item.children.length > 0 : canSee(PAGE_MODULE[item.key]) || item.key === '/roles'));
+  const blockedModule = PAGE_MODULE[location.pathname];
+  const pageBlocked = !!permissions && blockedModule && !canSee(blockedModule);
+
+  const allMenuItems = [
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
@@ -68,6 +89,11 @@ export default function AppLayout() {
       key: '/growers',
       icon: <TeamOutlined />,
       label: 'Contract Growers',
+    },
+    {
+      key: '/contracts',
+      icon: <FileProtectOutlined />,
+      label: 'Contract Farming',
     },
     {
       key: '/seed-quality',
@@ -121,12 +147,23 @@ export default function AppLayout() {
       icon: <BarChartOutlined />,
       label: 'Finance & Reports',
     },
-    ...(user?.role === 'admin' ? [{
+    ...(canSee('users') && permissions?.users !== 'none' ? [{
       key: '/users',
       icon: <TeamOutlined />,
       label: 'User Management',
     }] : []),
+    ...(permissions && permissions.audit !== 'none' ? [{
+      key: '/audit',
+      icon: <AuditOutlined />,
+      label: 'Audit Log',
+    }] : []),
+    ...(permissions && (permissions.users !== 'none' || permissions.audit !== 'none') ? [{
+      key: '/roles',
+      icon: <SafetyCertificateOutlined />,
+      label: 'Roles & Access',
+    }] : []),
   ];
+  const menuItems = filterMenu(allMenuItems);
 
   return (
     <Layout style={{ minHeight: '100vh', background: '#f6f5ed' }}>
@@ -263,7 +300,7 @@ export default function AppLayout() {
                 {user?.name || 'Jane Mwangi'}
               </div>
               <div style={{ fontSize: 10, color: '#9cb39c' }}>
-                {formatRole(user?.role) || 'Operations Manager'}
+                {roleLabel || formatRole(user?.role) || 'Team member'}
               </div>
             </div>
           </div>
@@ -298,7 +335,7 @@ export default function AppLayout() {
 
           <Space size="middle">
             <Tag color="green" style={{ background: '#eaf2dc', borderColor: '#c8ef76', color: '#153d2d', fontWeight: 600 }}>
-              {formatRole(user?.role)}
+              {roleLabel || formatRole(user?.role)}
             </Tag>
             <Button
               type="text"
@@ -313,7 +350,14 @@ export default function AppLayout() {
         </Header>
 
         <Content style={{ margin: '20px 24px', minHeight: 280 }}>
-          <Outlet />
+          {pageBlocked ? (
+            <Result
+              status="403"
+              title="No access to this page"
+              subTitle={`Your role (${roleLabel || formatRole(user?.role)}) is not allowed to open this page. Ask an administrator if you need access.`}
+              extra={<Button type="primary" onClick={() => navigate('/dashboard')}>Back to overview</Button>}
+            />
+          ) : <Outlet />}
         </Content>
       </Layout>
     </Layout>

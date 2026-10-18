@@ -15,6 +15,8 @@ export default function Users() {
   const [pwForm] = Form.useForm();
   const queryClient = useQueryClient();
 
+  const { data: accessMeta } = useQuery({ queryKey: ['accessMatrix'], queryFn: () => api.get('/access/matrix') });
+  const roleOptions = accessMeta?.data?.roles || [];
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => api.get('/users'),
@@ -67,18 +69,8 @@ export default function Users() {
     setPwModalOpen(true);
   };
 
-  const getRoleTag = (role) => {
-    const map = {
-      admin: { color: 'red', label: 'Admin' },
-      farm_manager: { color: 'green', label: 'Farm Manager' },
-      accountant: { color: 'blue', label: 'Accountant' },
-      store_keeper: { color: 'orange', label: 'Store Keeper' },
-      sales_officer: { color: 'purple', label: 'Sales Officer' },
-      procurement_officer: { color: 'cyan', label: 'Procurement Officer' },
-    };
-    const c = map[role] || { color: 'default', label: role };
-    return <Tag color={c.color}>{c.label}</Tag>;
-  };
+  const roleLabelOf = (key) => roleOptions.find((r) => r.key === key)?.label || key;
+  const getRoleTag = (role) => <Tag color={role === 'admin' ? 'red' : role === 'auditor' ? 'default' : 'green'}>{roleLabelOf(role)}</Tag>;
 
   const columns = [
     {
@@ -198,14 +190,7 @@ export default function Users() {
 
           <Space orientation="horizontal" style={{ width: '100%' }} size="middle">
             <Form.Item orientation="vertical" style={{ width: 240 }} name="role" label="Role Assignment" rules={[{ required: true }]}>
-              <Select>
-                <Select.Option value="admin">System Administrator</Select.Option>
-                <Select.Option value="farm_manager">Farm Manager</Select.Option>
-                <Select.Option value="accountant">Accountant / Finance</Select.Option>
-                <Select.Option value="store_keeper">Store Keeper / Stores</Select.Option>
-                <Select.Option value="sales_officer">Sales Officer</Select.Option>
-                <Select.Option value="procurement_officer">Procurement Officer</Select.Option>
-              </Select>
+              <Select options={roleOptions.map((r) => ({ value: r.key, label: r.label }))} />
             </Form.Item>
             <Form.Item orientation="vertical" style={{ width: 240 }} name="department" label="Department">
               <Input placeholder="e.g. Sales / Operations / Finance" />

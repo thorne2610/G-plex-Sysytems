@@ -22,10 +22,13 @@ import Reports from './pages/Reports.jsx';
 import Users from './pages/Users.jsx';
 import POS from './pages/POS.jsx';
 import Growers from './pages/Growers.jsx';
+import ContractFarming from './pages/ContractFarming.jsx';
 import SeedQuality from './pages/SeedQuality.jsx';
 import Staff from './pages/Staff.jsx';
 import MachineryWork from './pages/MachineryWork.jsx';
 import Feedback from './pages/Feedback.jsx';
+import AuditLog from './pages/AuditLog.jsx';
+import RolesAccess from './pages/RolesAccess.jsx';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -78,6 +81,7 @@ export default function App() {
         <Route path="pos" element={<POS />} />
         <Route path="fields" element={<Fields />} />
         <Route path="growers" element={<Growers />} />
+        <Route path="contracts" element={<ContractFarming />} />
         <Route path="seed-quality" element={<SeedQuality />} />
         <Route path="customers" element={<Customers />} />
         <Route path="quotations" element={<Quotations />} />
@@ -95,6 +99,8 @@ export default function App() {
         <Route path="feedback" element={<Feedback />} />
         <Route path="reports" element={<Reports />} />
         <Route path="users" element={<Users />} />
+        <Route path="audit" element={<AuditLog />} />
+        <Route path="roles" element={<RolesAccess />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

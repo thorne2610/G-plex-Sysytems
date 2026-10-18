@@ -7,12 +7,14 @@ const dateOk = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(
 
 export default async function staffRoutes(app) {
   const secured = auth(app);
-  const management = { preHandler: [app.authenticate, app.authorise(['admin','farm_manager'])] };
-  const payrollAccess = { preHandler: [app.authenticate, app.authorise(['admin','accountant'])] };
+  const management = { preHandler: [app.authenticate, app.authorise(['admin','managing_director','farm_manager','hr_officer'])] };
+  const payrollAccess = { preHandler: [app.authenticate, app.authorise(['admin','managing_director','accountant','hr_officer'])] };
+  const payrollView = { preHandler: [app.authenticate, app.authorise(['admin','managing_director','accountant','hr_officer','auditor'])] };
+  const payrollApprove = { preHandler: [app.authenticate, app.authorise(['admin','managing_director','accountant'])] };
 
   app.get('/employees', secured, (req, reply) => {
     const db = getDb();
-    const payField = ['admin','accountant'].includes(req.user.role) ? 'e.base_rate,' : '';
+    const payField = ['admin','managing_director','accountant','hr_officer','auditor'].includes(req.user.role) ? 'e.base_rate,' : '';
     reply.send({ success: true, data: db.prepare(`SELECT e.id,e.employee_no,e.name,e.worker_type,e.department,e.job_title,e.phone,e.email,e.contract_ref,e.start_date,e.end_date,e.pay_type,${payField}e.status,e.notes,e.created_at,e.updated_at,
       (SELECT COUNT(*) FROM attendance_records a WHERE a.employee_id=e.id AND a.work_date>=date('now','-30 day')) attendance_days,
       (SELECT COUNT(*) FROM labour_work_logs l WHERE l.employee_id=e.id AND l.status='approved') approved_tasks
@@ -116,8 +118,8 @@ export default async function staffRoutes(app) {
     reply.code(201).send({ success: true, data: db.prepare('SELECT * FROM safety_records WHERE id=?').get(result.lastInsertRowid) });
   });
 
-  app.get('/payroll-runs', payrollAccess, (req, reply) => reply.send({ success: true, data: getDb().prepare('SELECT * FROM payroll_runs ORDER BY period_start DESC,id DESC').all() }));
-  app.get('/payroll-runs/:id', payrollAccess, (req, reply) => {
+  app.get('/payroll-runs', payrollView, (req, reply) => reply.send({ success: true, data: getDb().prepare('SELECT * FROM payroll_runs ORDER BY period_start DESC,id DESC').all() }));
+  app.get('/payroll-runs/:id', payrollView, (req, reply) => {
     const db = getDb(); const run = db.prepare('SELECT * FROM payroll_runs WHERE id=?').get(req.params.id);
     if (!run) return reply.code(404).send({ success: false, message: 'Payroll run not found.' });
     run.lines = db.prepare('SELECT p.*,e.employee_no,e.name AS employee_name FROM payroll_lines p JOIN employees e ON e.id=p.employee_id WHERE p.payroll_run_id=? ORDER BY e.name').all(run.id);
@@ -154,7 +156,7 @@ export default async function staffRoutes(app) {
     } catch (error) { db.exec('ROLLBACK'); throw error; }
     reply.code(201).send({ success: true, data: db.prepare('SELECT * FROM payroll_runs WHERE id=?').get(run) });
   });
-  app.patch('/payroll-runs/:id/status', payrollAccess, (req, reply) => {
+  app.patch('/payroll-runs/:id/status', payrollApprove, (req, reply) => {
     const status = req.body?.status; const db = getDb();
     if (!['approved','paid'].includes(status)) return reply.code(400).send({ success: false, message: 'Status must be approved or paid.' });
     const old = db.prepare('SELECT status FROM payroll_runs WHERE id=?').get(req.params.id);

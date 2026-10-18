@@ -32,6 +32,9 @@ import posRoutes from './routes/pos.js';
 import growerRoutes from './routes/growers.js';
 import seedQualityRoutes from './routes/seedQuality.js';
 import feedbackRoutes from './routes/feedback.js';
+import contractRoutes from './routes/contracts.js';
+import registerAccessControl from './auth/accessControl.js';
+import { getDb } from './db/connection.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '../.env') });
@@ -59,6 +62,12 @@ await app.register(fastifyJwt, {
 app.decorate('authenticate', async function (request, reply) {
   try {
     await request.jwtVerify();
+    // Always use the user's current role/status from the database, not the one in the token.
+    const current = getDb().prepare('SELECT role, is_active FROM users WHERE id = ?').get(request.user.id);
+    if (!current || !current.is_active) {
+      return reply.code(401).send({ success: false, message: 'Unauthorised — please log in' });
+    }
+    request.user.role = current.role;
   } catch (err) {
     reply.code(401).send({ success: false, message: 'Unauthorised — please log in' });
   }
@@ -71,6 +80,9 @@ app.decorate('authorise', function (roles) {
     }
   };
 });
+
+// ── Access control & audit trail (applies to every /api route below) ──
+await registerAccessControl(app);
 
 // ── API Routes ─────────────────────────────────────────────────
 const API = '/api';
@@ -97,6 +109,7 @@ app.register(posRoutes,          { prefix: `${API}/pos` });
 app.register(growerRoutes,       { prefix: `${API}/growers` });
 app.register(seedQualityRoutes,  { prefix: `${API}/seed-quality` });
 app.register(feedbackRoutes,     { prefix: `${API}/feedback` });
+app.register(contractRoutes,     { prefix: `${API}/contracts` });
 
 // ── Serve React SPA (Production) ───────────────────────────────
 const distPath = join(__dirname, '../../client/dist');

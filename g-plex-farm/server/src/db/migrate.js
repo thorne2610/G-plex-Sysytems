@@ -4,6 +4,8 @@ import { fileURLToPath } from 'url';
 import { getDb } from './connection.js';
 import { SCHEMA_SQL } from './schema.js';
 import { FEEDBACK_SCHEMA_SQL } from './feedbackSchema.js';
+import { ensureRoleSupport } from './rolesMigration.js';
+import { CONTRACT_SCHEMA_SQL } from './contractSchema.js';
 import bcrypt from 'bcryptjs';
 
 dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), '../../.env') });
@@ -14,6 +16,8 @@ export function runMigrations() {
   // Run all schema SQL
   db.exec(SCHEMA_SQL);
   db.exec(FEEDBACK_SCHEMA_SQL);
+  db.exec(CONTRACT_SCHEMA_SQL);
+  ensureRoleSupport();
 
   // Additive upgrades for installations created before farm hierarchy fields were introduced.
   const fieldColumns = new Set(db.prepare("PRAGMA table_info('fields')").all().map(column => column.name));

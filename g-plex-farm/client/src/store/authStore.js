@@ -3,15 +3,28 @@ import api from '../api/client.js';
 
 export const useAuthStore = create((set, get) => ({
   user: null,
+  permissions: null,
+  roleLabel: '',
   isAuthenticated: false,
   isLoading: true,
   error: null,
+
+  // Which parts of the system the signed-in user may view or change (decided by the server).
+  loadAccess: async () => {
+    try {
+      const res = await api.get('/access/me');
+      set({ permissions: res.data.permissions, roleLabel: res.data.role_label });
+    } catch {
+      set({ permissions: null, roleLabel: '' });
+    }
+  },
 
   checkAuth: async () => {
     try {
       set({ isLoading: true });
       const res = await api.get('/auth/me');
       if (res.success && res.data) {
+        await get().loadAccess();
         set({ user: res.data, isAuthenticated: true, isLoading: false, error: null });
       } else {
         set({ user: null, isAuthenticated: false, isLoading: false });
@@ -26,6 +39,7 @@ export const useAuthStore = create((set, get) => ({
       set({ isLoading: true, error: null });
       const res = await api.post('/auth/login', { email, password });
       if (res.success && res.data) {
+        await get().loadAccess();
         set({ user: res.data, isAuthenticated: true, isLoading: false, error: null });
         return { success: true };
       }
@@ -42,7 +56,7 @@ export const useAuthStore = create((set, get) => ({
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      set({ user: null, isAuthenticated: false, error: null });
+      set({ user: null, permissions: null, roleLabel: '', isAuthenticated: false, error: null });
     }
   },
 }));
